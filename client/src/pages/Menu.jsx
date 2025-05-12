@@ -3,7 +3,7 @@ import { useState } from "react";
 import Navbar from "../components/Navbar";
 import MenuHero from "../components/Menu/MenuHero";
 import MenuCategory from "../components/Menu/MenuCategory";
-import menuData from "../data/menuData";
+import menuData from "../data/MenuData";
 
 const categories = [
   "All",
