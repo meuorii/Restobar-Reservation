@@ -61,7 +61,7 @@ const Reports = () => {
         r.name || r.email || "Unknown",
         r.date,
         `${r.startTime} - ${r.endTime}`,
-        r.guestCount || "-",
+        r.guests || "-",
         r.status,
       ]),
     });

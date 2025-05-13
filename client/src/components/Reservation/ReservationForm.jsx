@@ -104,8 +104,11 @@ const ReservationForm = () => {
       });
 
       const available = filteredTables.filter(
-        (table) => !reservedTableIds.has(table.table_id)
+      (table) =>
+          !reservedTableIds.has(table.table_id) &&
+          table.status === "available" // ✅ Exclude "under repair" or "unavailable"
       );
+
 
       setAvailableTables(available);
     };
@@ -291,6 +294,7 @@ const ReservationForm = () => {
             <>
               <option value="">-- Select a Table --</option>
               {availableTables
+                .filter((table) => table.status === "available")
                 .filter((table) => {
                   const guests = parseInt(formData.guests);
                   if (guests <= 2) return table.capacity === 2;

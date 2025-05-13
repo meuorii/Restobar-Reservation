@@ -1,3 +1,4 @@
+// Dashboard.jsx
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import AdminHomeOverview from "./AdminHomeOverview";
@@ -39,17 +40,12 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-900 text-white overflow-hidden">
-      {/* Sidebar remains fixed and does not scroll */}
-      <div className="w-64 bg-gray-800 border-r border-gray-700">
-        <Sidebar onLogout={handleLogout} />
-      </div>
-
-      {/* Scrollable main content */}
-      <main className="flex-1 overflow-y-auto p-8">
-        {renderContent()}
-      </main>
-    </div>
+    <div className="flex bg-gray-900 text-white min-h-screen">
+  <Sidebar onLogout={handleLogout} />
+  <main className="flex-1 p-4 pt-16 md:pt-8 overflow-y-auto">
+    {renderContent()}
+  </main>
+</div>
   );
 };
 
