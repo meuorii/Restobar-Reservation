@@ -104,11 +104,11 @@ const ReservationForm = () => {
       });
 
       const available = filteredTables.filter(
-      (table) =>
+        (table) =>
           !reservedTableIds.has(table.table_id) &&
-          table.status === "available" // ✅ Exclude "under repair" or "unavailable"
+          table.status !== "under repair" &&
+          table.status !== "unavailable"
       );
-
 
       setAvailableTables(available);
     };
@@ -138,7 +138,7 @@ const ReservationForm = () => {
       const selectedStart = new Date(`${date}T${startTime}`);
       const selectedEnd = new Date(`${date}T${endTime}`);
       if (endTime < startTime) {
-        selectedEnd.setDate(selectedEnd.getDate() + 1); // crosses midnight
+        selectedEnd.setDate(selectedEnd.getDate() + 1);
       }
 
       if (selectedEnd <= selectedStart) {
@@ -174,7 +174,6 @@ const ReservationForm = () => {
         return;
       }
 
-      // 🔍 Filter tables based on guest count
       const filteredAvailableTables = availableTables.filter((table) => {
         const guests = parseInt(formData.guests);
         if (guests <= 2) return table.capacity === 2;
@@ -294,7 +293,6 @@ const ReservationForm = () => {
             <>
               <option value="">-- Select a Table --</option>
               {availableTables
-                .filter((table) => table.status === "available")
                 .filter((table) => {
                   const guests = parseInt(formData.guests);
                   if (guests <= 2) return table.capacity === 2;
