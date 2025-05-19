@@ -10,10 +10,8 @@ import {
 } from "firebase/firestore";
 import { db } from "../../firebase/firebaseConfig";
 import { toast, ToastContainer } from "react-toastify";
-import { sendConfirmationEmail } from "../../utils/sendConfirmationEmail";
 import "react-toastify/dist/ReactToastify.css";
 
-// Format time (24h) to 12h AM/PM
 const formatTimeAMPM = (time24) => {
   const [hourStr, minute] = time24.split(":");
   const hour = parseInt(hourStr, 10);
@@ -22,7 +20,6 @@ const formatTimeAMPM = (time24) => {
   return `${displayHour}:${minute} ${suffix}`;
 };
 
-// Format date to "Month Day, Year"
 const formatDatePretty = (dateStr) => {
   const date = new Date(dateStr);
   return date.toLocaleDateString("en-US", {
@@ -64,36 +61,6 @@ const ReservationManager = () => {
       toast.error("Failed to load reservations.");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleStatusChange = async (id, newStatus) => {
-    try {
-      const resRef = doc(db, "reservations", id);
-      await updateDoc(resRef, { status: newStatus });
-
-      const updated = reservations.find((r) => r.id === id);
-
-      if (newStatus === "confirmed" && updated?.email) {
-        await sendConfirmationEmail({
-          to_name: updated.name || "Customer",
-          to_email: updated.email,
-          date: formatDatePretty(updated.date),
-          start_time: formatTimeAMPM(updated.startTime),
-          end_time: formatTimeAMPM(updated.endTime),
-          table_id: updated.table_id || "N/A",
-        });
-        toast.success(`✅ Reservation for ${updated.name} confirmed. Email sent.`);
-      } else if (newStatus === "cancelled") {
-        toast.info(`❌ Reservation for ${updated.name} was cancelled.`);
-      } else {
-        toast.success(`Reservation status updated to "${newStatus}".`);
-      }
-
-      fetchReservations();
-    } catch (error) {
-      console.error("Error updating status:", error);
-      toast.error("Failed to update reservation status.");
     }
   };
 
@@ -148,38 +115,41 @@ const ReservationManager = () => {
                     {res.status}
                   </span>
                 </p>
+                {res.confirmed_at && (
+                  <p><span className="font-semibold">Confirmed At:</span>{" "}
+                    {new Date(res.confirmed_at.toDate?.() || res.confirmed_at).toLocaleString()}
+                  </p>
+                )}
               </div>
 
               <div className="flex flex-wrap gap-2 lg:items-start justify-end">
-                {res.status === "pending" && (
-                  <>
-                    <button
-                      onClick={() => handleStatusChange(res.id, "confirmed")}
-                      className="bg-green-500 hover:bg-green-400 text-black text-xs px-4 py-2 rounded"
-                    >
-                      Confirm
-                    </button>
-                    <button
-                      onClick={() => handleStatusChange(res.id, "cancelled")}
-                      className="bg-red-500 hover:bg-red-400 text-white text-xs px-4 py-2 rounded"
-                    >
-                      Cancel
-                    </button>
-                  </>
+                {res.status === "pending" && !res.confirmed_at && (
+                  <p className="text-yellow-400 text-xs">Waiting for customer to confirm via email...</p>
                 )}
-                <button
-                  onClick={() => handleDelete(res.id)}
-                  className="border border-red-500 text-red-400 hover:bg-red-500 hover:text-white text-xs px-4 py-2 rounded"
-                >
-                  Delete
-                </button>
+
+                {res.status === "pending" && res.confirmed_at && (
+                  <button
+                    disabled
+                    className="bg-gray-600 text-white text-xs px-4 py-2 rounded cursor-not-allowed"
+                  >
+                    Confirmed via Email
+                  </button>
+                )}
+
+                {res.status !== "pending" && (
+                  <button
+                    onClick={() => handleDelete(res.id)}
+                    className="border border-red-500 text-red-400 hover:bg-red-500 hover:text-white text-xs px-4 py-2 rounded"
+                  >
+                    Delete
+                  </button>
+                )}
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* ToastContainer to show notifications */}
       <ToastContainer position="top-right" autoClose={4000} hideProgressBar />
     </div>
   );

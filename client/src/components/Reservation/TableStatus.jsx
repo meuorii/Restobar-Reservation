@@ -15,7 +15,10 @@ const formatTime = (time) => {
 const TableStatus = () => {
   const [tables, setTables] = useState([]);
   const [reservations, setReservations] = useState([]);
-  const [selectedDate, setSelectedDate] = useState("");
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split("T")[0]; // ✅ Default to today
+  });
   const [selectedTime, setSelectedTime] = useState("");
   const [selectedType, setSelectedType] = useState("All");
 
@@ -192,14 +195,14 @@ const TableStatus = () => {
               }
             >
               <div className="flex items-center justify-between w-full mb-2">
-  <span className="font-semibold text-sm">Table {table.table_id}</span>
-  <span
-    className={`text-[10px] px-2 py-0.5 rounded-full min-w-[75px] text-center ${badgeColor}`}
-    style={{ whiteSpace: "nowrap" }}
-  >
-    {badgeLabel}
-  </span>
-</div>
+                <span className="font-semibold text-sm">Table {table.table_id}</span>
+                <span
+                  className={`text-[10px] px-2 py-0.5 rounded-full min-w-[75px] text-center ${badgeColor}`}
+                  style={{ whiteSpace: "nowrap" }}
+                >
+                  {badgeLabel}
+                </span>
+              </div>
               <div className="text-gray-300 text-xs">
                 <p>{table.type}</p>
                 <p>{table.capacity} Guests</p>

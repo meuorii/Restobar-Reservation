@@ -13,10 +13,7 @@ import { sendReservationEmail } from "../../utils/emailService";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-const timeSlots = [
-  "18:00", "19:00", "20:00", "21:00", "22:00",
-  "23:00", "00:00", "01:00",
-];
+const timeSlots = ["18:00", "19:00", "20:00", "21:00", "22:00", "23:00", "00:00", "01:00"];
 
 const formatTimeAMPM = (time24) => {
   const [hourStr, minute] = time24.split(":");
@@ -120,39 +117,38 @@ const ReservationForm = () => {
     e.preventDefault();
     setLoading(true);
 
+    const requiredFields = ["name", "contact", "email", "date", "startTime", "endTime", "table_id"];
+    for (let field of requiredFields) {
+      if (!formData[field]) {
+        toast.error("❌ Please complete all required fields.");
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       const recaptchaToken = recaptchaRef.current?.getValue();
       if (!recaptchaToken) {
-        toast.error("Please verify you're not a robot.");
+        toast.error("❌ Please verify you're not a robot.");
         setLoading(false);
         return;
       }
 
       const { startTime, endTime, date } = formData;
-      if (!startTime || !endTime) {
-        toast.error("Start and end time are required.");
-        setLoading(false);
-        return;
-      }
-
       const selectedStart = new Date(`${date}T${startTime}`);
       const selectedEnd = new Date(`${date}T${endTime}`);
-      if (endTime < startTime) {
-        selectedEnd.setDate(selectedEnd.getDate() + 1);
-      }
+      if (endTime < startTime) selectedEnd.setDate(selectedEnd.getDate() + 1);
 
       if (selectedEnd <= selectedStart) {
-        toast.error("End time must be after start time.");
+        toast.error("❌ End time must be after start time.");
         setLoading(false);
         return;
       }
 
       const reservationRef = collection(db, "reservations");
-      const snapshot = await getDocs(
-        query(reservationRef, where("date", "==", date))
-      );
-
+      const snapshot = await getDocs(query(reservationRef, where("date", "==", date)));
       const reservations = snapshot.docs.map((doc) => doc.data());
+
       const isOverlap = (start1, end1, start2, end2) =>
         start1 < end2 && end1 > start2;
 
@@ -169,7 +165,7 @@ const ReservationForm = () => {
       });
 
       if (conflict) {
-        toast.error("This table is already reserved at that time.");
+        toast.error("❌ This table is already reserved at that time.");
         setLoading(false);
         return;
       }
@@ -185,11 +181,16 @@ const ReservationForm = () => {
       });
 
       const isWaitingList = filteredAvailableTables.length === 0;
+      const reservationCode = `RES-${Date.now().toString().slice(-6)}`;
+      const expirationTime = new Date();
+      expirationTime.setMinutes(expirationTime.getMinutes() + 30);
 
       const newReservation = {
         ...formData,
         status: isWaitingList ? "waiting-list" : "pending",
+        code: reservationCode,
         timestamp: serverTimestamp(),
+        confirmation_expiry: expirationTime,
       };
 
       await addDoc(reservationRef, newReservation);
@@ -198,13 +199,12 @@ const ReservationForm = () => {
         await sendReservationEmail({
           to_name: formData.name,
           to_email: formData.email,
-          message: isWaitingList
-            ? `Hi ${formData.name}, you’ve been added to the waiting list. We will notify you if a table becomes available.`
-            : `Hi ${formData.name}, thank you for reserving at our Resto Bar. Your reservation is currently pending confirmation.`,
           date: formatDatePretty(formData.date),
           start_time: formatTimeAMPM(formData.startTime),
           end_time: formatTimeAMPM(formData.endTime),
           table_id: isWaitingList ? "N/A" : formData.table_id,
+          guests: formData.guests,
+          code: reservationCode,
         });
       }
 
@@ -230,7 +230,7 @@ const ReservationForm = () => {
       recaptchaRef.current.reset();
     } catch (error) {
       console.error("🔥 Reservation error:", error);
-      toast.error("Something went wrong. Please try again.");
+      toast.error("❌ Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -246,31 +246,25 @@ const ReservationForm = () => {
           Reservation Form
         </h2>
 
-        <input type="text" name="name" required placeholder="Full Name" value={formData.name} onChange={handleChange} className="w-full p-3 rounded-md bg-gray-800 text-white" />
-        <input type="tel" name="contact" required placeholder="Contact Number" value={formData.contact} onChange={handleChange} className="w-full p-3 rounded-md bg-gray-800 text-white" />
-        <input type="email" name="email" placeholder="Email (optional)" value={formData.email} onChange={handleChange} className="w-full p-3 rounded-md bg-gray-800 text-white" />
+        <input type="text" name="name" placeholder="Full Name" value={formData.name} onChange={handleChange} className="w-full p-3 rounded-md bg-gray-800 text-white" />
+        <input type="tel" name="contact" placeholder="Contact Number" value={formData.contact} onChange={handleChange} className="w-full p-3 rounded-md bg-gray-800 text-white" />
+        <input type="email" name="email" placeholder="Email" value={formData.email} onChange={handleChange} className="w-full p-3 rounded-md bg-gray-800 text-white" />
 
         <div className="grid md:grid-cols-2 gap-4">
-          <input type="date" name="date" required value={formData.date} onChange={handleChange} className="w-full p-3 rounded-md bg-gray-800 text-white" min={new Date().toISOString().split("T")[0]} />
+          <input type="date" name="date" value={formData.date} onChange={handleChange} className="w-full p-3 rounded-md bg-gray-800 text-white" min={new Date().toISOString().split("T")[0]} />
 
           <div className="grid grid-cols-2 gap-2">
-            <select name="startTime" value={formData.startTime} onChange={(e) => { handleChange(e); setFormData((prev) => ({ ...prev, endTime: "" })); }} required className="w-full p-3 rounded-md bg-gray-800 text-white">
+            <select name="startTime" value={formData.startTime} onChange={(e) => { handleChange(e); setFormData((prev) => ({ ...prev, endTime: "" })); }} className="w-full p-3 rounded-md bg-gray-800 text-white">
               <option value="">Start Time</option>
-              {timeSlots
-                .filter((time) => time !== "01:00")
-                .map((time) => (
-                  <option key={time} value={time}>
-                    {formatTimeAMPM(time)}
-                  </option>
-                ))}
+              {timeSlots.filter((time) => time !== "01:00").map((time) => (
+                <option key={time} value={time}>{formatTimeAMPM(time)}</option>
+              ))}
             </select>
 
-            <select name="endTime" value={formData.endTime} onChange={handleChange} required disabled={!formData.startTime} className="w-full p-3 rounded-md bg-gray-800 text-white">
+            <select name="endTime" value={formData.endTime} onChange={handleChange} disabled={!formData.startTime} className="w-full p-3 rounded-md bg-gray-800 text-white">
               <option value="">End Time</option>
               {getAllowedEndTimes(formData.startTime).map((time) => (
-                <option key={time} value={time}>
-                  {formatTimeAMPM(time)}
-                </option>
+                <option key={time} value={time}>{formatTimeAMPM(time)}</option>
               ))}
             </select>
           </div>
@@ -278,9 +272,7 @@ const ReservationForm = () => {
 
         <select name="guests" value={formData.guests} onChange={handleChange} className="w-full p-3 rounded-md bg-gray-800 text-white">
           {[...Array(15).keys()].map((n) => (
-            <option key={n + 1} value={n + 1}>
-              {n + 1} Guest{n > 0 ? "s" : ""}
-            </option>
+            <option key={n + 1} value={n + 1}>{n + 1} Guest{n > 0 ? "s" : ""}</option>
           ))}
         </select>
 
@@ -292,21 +284,19 @@ const ReservationForm = () => {
           ) : (
             <>
               <option value="">-- Select a Table --</option>
-              {availableTables
-                .filter((table) => {
-                  const guests = parseInt(formData.guests);
-                  if (guests <= 2) return table.capacity === 2;
-                  if (guests <= 4) return table.capacity === 4;
-                  if (guests <= 6) return table.capacity === 6;
-                  if (guests <= 10) return table.capacity === 10;
-                  if (guests <= 15) return table.capacity === 15;
-                  return false;
-                })
-                .map((table) => (
-                  <option key={table.table_id} value={table.table_id}>
-                    Table {table.table_id} – {table.type} (Seats {table.capacity})
-                  </option>
-                ))}
+              {availableTables.filter((table) => {
+                const guests = parseInt(formData.guests);
+                if (guests <= 2) return table.capacity === 2;
+                if (guests <= 4) return table.capacity === 4;
+                if (guests <= 6) return table.capacity === 6;
+                if (guests <= 10) return table.capacity === 10;
+                if (guests <= 15) return table.capacity === 15;
+                return false;
+              }).map((table) => (
+                <option key={table.table_id} value={table.table_id}>
+                  Table {table.table_id} – {table.type} (Seats {table.capacity})
+                </option>
+              ))}
             </>
           )}
         </select>
